@@ -22,7 +22,6 @@ def has_connection(pair) -> bool:
     return False
 
 
-
 def fill_matrix(matrix, rna, min_loop_length=MIN_LOOP_LENGTH):
     n = len(rna)
 
@@ -87,19 +86,78 @@ def traceback(matrix, rna, i, j, pairs, min_loop_length=MIN_LOOP_LENGTH):
     return pairs
 
 
-rna = "GGGGUGACCC"
-result = init_matrix(rna)
-result = fill_matrix(result, rna)
+def to_dot_bracket(rna, pairs):
+    structure = ["."] * len(rna)
 
-nucliodites = [nucliotide for nucliotide in rna]
+    for i, j in pairs:
+        if not (0 <= i < j < len(rna)):
+            raise ValueError(f"Invalid base pair: ({i}, {j})")
 
-pairs = traceback(result, rna, 0, len(rna) - 1, [])
+        if structure[i] != "." or structure[j] != ".":
+            raise ValueError("A nucleotide cannot belong to multiple pairs.")
 
-print("\nOptimal base pairs:")
-for i, j in sorted(pairs):
-    print(f"{rna[i]}{i + 1} - {rna[j]}{j + 1}")
+        structure[i] = "("
+        structure[j] = ")"
 
-result = pd.DataFrame(result)
-result.columns = nucliodites
-result.index = nucliodites
-print(result)
+    return "".join(structure)
+
+
+def main():
+    # Input RNA sequence
+    rna = "GGGGUGACCC"
+
+    # Calculate the dynamic programming matrix
+    matrix = init_matrix(rna)
+    matrix = fill_matrix(matrix, rna)
+
+    # Reconstruct the optimal base pairs
+    pairs = traceback(matrix, rna, 0, len(rna) - 1, [])
+
+    # Generate dot-bracket representation
+    dot_bracket = to_dot_bracket(rna, pairs)
+
+    # Calculate prediction summary
+    n = len(rna)
+    max_pairs = int(matrix[0][n - 1])
+
+    # Display results
+    print("=" * 50)
+    print("       RNA SECONDARY STRUCTURE PREDICTION")
+    print("=" * 50)
+
+    print("\n1. RNA SEQUENCE")
+    print(f"   {rna}")
+    print(f"   Length: {n} nucleotides")
+
+    print("\n2. PREDICTED SECONDARY STRUCTURE")
+    print(f"   {dot_bracket}")
+
+    print("\n3. PREDICTION SUMMARY")
+    print(f"   Maximum number of base pairs: {max_pairs}")
+    print(f"   Unpaired nucleotides: {n - 2 * len(pairs)}")
+
+    print("\n4. OPTIMAL BASE PAIRS")
+    if pairs:
+        print(f"   {'Position 1':<15}{'Position 2':<15}{'Pair':<10}")
+        print("   " + "-" * 38)
+
+        for i, j in sorted(pairs):
+            pair = f"{rna[i]}-{rna[j]}"
+            print(f"   {i + 1:<15}{j + 1:<15}{pair:<10}")
+    else:
+        print("   No base pairs found.")
+
+    print("\n5. DYNAMIC PROGRAMMING MATRIX")
+    labels = [
+        f"{i + 1}:{nucleotide}"
+        for i, nucleotide in enumerate(rna)
+    ]
+
+    matrix_df = pd.DataFrame(matrix, index=labels, columns=labels)
+    print(matrix_df.to_string())
+    
+    print("\n" + "=" * 50)
+
+
+if __name__ == "__main__":
+    main()
